@@ -1,3 +1,16 @@
+class String
+  def red;            "\e[31m#{self}\e[0m" end
+  def green;          "\e[32m#{self}\e[0m" end
+  def brown;          "\e[33m#{self}\e[0m" end
+  def blue;           "\e[34m#{self}\e[0m" end
+  def magenta;        "\e[35m#{self}\e[0m" end
+  def cyan;           "\e[36m#{self}\e[0m" end
+  def gray;           "\e[37m#{self}\e[0m" end
+  
+  def italic;         "\e[3m#{self}\e[23m" end
+  def underline;      "\e[4m#{self}\e[24m" end
+  end
+
 # Stores the pegs
 class Board
   attr_accessor :turns, :guesses, :code
@@ -13,9 +26,9 @@ class Board
     @code = Array.new(4, 0)
   end
 
-  def print_board(show_code = false, highlighted = nil)
-    print_line(@code, show_code, highlighted == 0)
-    print("---------------------\n")
+  def print_board(show_code = false, highlighted = -1)
+    print_line(@code, show_code, highlighted.zero?)
+    print("----------------------\n")
     @turns.each_with_index do |line, i|
       print_line(line, true, highlighted == (i + 1))
     end
@@ -26,17 +39,16 @@ class Board
   def print_line(line, show, highlighted)
     if line.is_a?(Array)
       if show
-        line.each{ |peg| print(" #{peg} ") }
+        line.each { |peg| print(" #{peg} ") }
       else
-        line.each{ print(" ? ") }
+        line.each { print(" ? ") }
       end
-      print("\n")
     else
-      line[:code_pegs].each{ |peg| print(" #{peg} ") }
-      print("|")
-      line[:key_pegs].each{ |peg| print(" #{peg}") }
-      print("\n")
+      line[:code_pegs].each { |peg| print(" #{peg} ") }
+      print('|')
+      line[:key_pegs].each { |peg| print(" #{peg}") }
     end
+    print("\n")
   end
 end
 
