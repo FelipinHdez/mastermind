@@ -28,7 +28,7 @@ class Board
 
   def print_board(show_code = false, highlighted = -1)
     print_line(@code, show_code, highlighted.zero?)
-    print("----------------------\n")
+    print("------------|---------\n")
     @turns.each_with_index do |line, i|
       print_line(line, true, highlighted == (i + 1))
     end
@@ -43,12 +43,37 @@ class Board
       else
         line.each { print(" ? ") }
       end
-    else
-      line[:code_pegs].each { |peg| print(" #{peg} ") }
       print('|')
-      line[:key_pegs].each { |peg| print(" #{peg}") }
+    else
+      print_code_pegs(line[:code_pegs])
+      print('|')
+      print_key_pegs(line[:key_pegs])
     end
     print("\n")
+  end
+
+  def print_code_pegs(pegs)
+    colors = %i[red green brown blue magenta cyan]
+    pegs.each do |peg|
+      peg = if peg.zero?
+              '_'
+            else
+              peg.to_s.send(colors[peg - 1])
+            end
+            print(" #{peg} ")
+    end
+  end
+
+  def print_key_pegs(pegs)
+    colors = %i[green red]
+    pegs.each do |peg|
+      peg = if peg.zero?
+              ' '
+            else
+              '•'.to_s.send(colors[peg - 1])
+            end
+      print(" #{peg}")
+    end
   end
 end
 
