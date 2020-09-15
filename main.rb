@@ -24,18 +24,18 @@ class String
   def reverse_color;  "\e[7m#{self}\e[27m" end
 end
 
+TURNS = 12
+
 # Stores the pegs
 class Board
-  attr_accessor :turns, :guesses, :code
-
-  TURNS = 12
+  attr_accessor :turns, :code
 
   def initialize
     make_new_board
   end
 
   def make_new_board
-    @turns = Array.new(TURNS, { code_pegs: Array.new(4, 0), key_pegs: Array.new(4, 0) })
+    @turns = Array.new(TURNS, { code_guess: Array.new(4, 0), key_pegs: Array.new(4, 0) })
     @code = Array.new(4, 0)
   end
 
@@ -53,7 +53,7 @@ class Board
     if line.is_a?(Array)
       print_secret_code(line, show, highlighted)
     else
-      print_code_pegs(line[:code_pegs], highlighted)
+      print_code_guess(line[:code_guess], highlighted)
       print('|')
       print_key_pegs(line[:key_pegs], highlighted)
     end
@@ -72,7 +72,7 @@ class Board
     print(to_print)
   end
 
-  def print_code_pegs(pegs, highlighted)
+  def print_code_guess(pegs, highlighted)
     colors = %i[red green brown blue magenta cyan]
     to_print = ''
     pegs.each do |peg|
@@ -107,15 +107,62 @@ end
 class Game
   def initialize
     @board = Board.new
-    @human = HumanPlayer.new
-    @computer = ComputerPlayer.new
+    @players = [HumanPlayer.new, ComputerPlayer.new]
+  end
+
+  def play
+    coder = 1
+    guesser = 0
+    loop do
+      @board.code = player[coder].get_code
+      @board.print_board
+      turn = 0
+      while turn < TURNS
+        code_guess = player[guesser].get_guess
+        @board.turns[turn][:code_guess] = code_guess
+        key_pegs = get_key_pegs(code_guess, @board.code)
+        @board.turns[turn][:key_pegs] = key_pegs
+        @board.print_board
+        if key_pegs == [1,1,1,1]
+          puts "Player #{player[guesser].name} guessed #{player[coder].name}'s code in #{turn} turns!
+          #{'#{player[guesser].name} won!!'.green.bold.bg_black}"
+          #TODO: decide the next coder and guesser
+          break
+        end
+        turn += 1
+      end
+    end
+  end
+
+  private
+  def get_key_pegs(code_guess, code)
+    key_pegs = code_guess.each_with_index.map do |guess_peg, i|
+      if guess_peg == code[i] ? 1 : 0
+    end
+    key_pegs.reverse_each.with_index do |item, i| 
+      i = key_pegs.lenght - (i + 1)
+      code.delete_at(i) if item == 1
+    end
+    key_pegs.map! do |item|
+      return 1 if item == 1
+      if code.include? item
+        code.delete_at(code.index(item) || code.length)
+        return 2
+      end
+      #TODO: delete line below after testing
+      print "#{item} : this should never happen\n" if item != 0 
+      return item
+    end
+    return key_pegs
   end
 end
 
+#TODO: implement .name and .get_guess
 # Handles the computer logic
 class ComputerPlayer
 end
 
+#TODO: implement .name and .get_guess
 # Handles user input
 class HumanPlayer
 end
