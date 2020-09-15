@@ -111,22 +111,21 @@ class Game
   end
 
   def play
-    coder = 1
-    guesser = 0
+    codemaker = 1
+    codebreaker = 0
     loop do
-      @board.code = player[coder].get_code
+      @board.code = player[codemaker].get_code
       @board.print_board
       turn = 0
       while turn < TURNS
-        code_guess = player[guesser].get_guess
+        code_guess = player[codebreaker].get_guess
         @board.turns[turn][:code_guess] = code_guess
         key_pegs = get_key_pegs(code_guess, @board.code)
         @board.turns[turn][:key_pegs] = key_pegs
         @board.print_board
         if key_pegs == [1,1,1,1]
-          puts "Player #{player[guesser].name} guessed #{player[coder].name}'s code in #{turn} turns!
-          #{'#{player[guesser].name} won!!'.green.bold.bg_black}"
-          #TODO: decide the next coder and guesser
+          puts "Player #{player[codebreaker].name} guessed #{player[codemaker].name}'s code in #{turn} turns!\n#{'#{player[codebreaker].name} won!!'.green.bold.bg_black}"
+          # TODO: decide the next codemaker and codebreaker
           break
         end
         turn += 1
@@ -135,9 +134,10 @@ class Game
   end
 
   private
+
   def get_key_pegs(code_guess, code)
     key_pegs = code_guess.each_with_index.map do |guess_peg, i|
-      if guess_peg == code[i] ? 1 : 0
+      guess_peg == code[i] ? 1 : 0
     end
     key_pegs.reverse_each.with_index do |item, i| 
       i = key_pegs.lenght - (i + 1)
@@ -145,11 +145,12 @@ class Game
     end
     key_pegs.map! do |item|
       return 1 if item == 1
+
       if code.include? item
         code.delete_at(code.index(item) || code.length)
         return 2
       end
-      #TODO: delete line below after testing
+      # TODO: delete line below after testing
       print "#{item} : this should never happen\n" if item != 0 
       return item
     end
@@ -157,12 +158,12 @@ class Game
   end
 end
 
-#TODO: implement .name and .get_guess
+# TODO: implement .name and .get_guess
 # Handles the computer logic
 class ComputerPlayer
 end
 
-#TODO: implement .name and .get_guess
+# TODO: implement .name and .get_guess
 # Handles user input
 class HumanPlayer
 end
