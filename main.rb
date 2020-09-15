@@ -39,25 +39,31 @@ class Board
     @code = Array.new(4, 0)
   end
 
-  def print_board(show_code = false, highlighted = -1)
-    print_line(@code, show_code, highlighted.zero?)
-    print("------------|\n")
+  def print_board(show_code = false, highlighted = -1, print = true)
+    to_print = print_line(@code, show_code, highlighted.zero?)
+    to_print << "------------|\n"
     @turns.each_with_index do |line, i|
-      print_line(line, true, highlighted == (i + 1))
+      to_print << print_line(line, true, highlighted == (i + 1))
+    end
+    if print
+      print(to_print)
+    else
+      to_print
     end
   end
 
   private
 
   def print_line(line, show, highlighted)
+    to_print = ''
     if line.is_a?(Array)
-      print_secret_code(line, show, highlighted)
+      to_print << print_secret_code(line, show, highlighted)
     else
-      print_code_guess(line[:code_guess], highlighted)
-      print('|')
-      print_key_pegs(line[:key_pegs], highlighted)
+      to_print << print_code_guess(line[:code_guess], highlighted)
+      to_print << '|'
+      to_print << print_key_pegs(line[:key_pegs], highlighted).rstrip
     end
-    print("\n")
+    to_print << "\n"
   end
 
   def print_secret_code(code, show, highlighted)
@@ -69,37 +75,34 @@ class Board
     end
     to_print << '|'
     to_print = to_print.bg_green.bold.black if highlighted
-    print(to_print)
+    to_print
   end
 
   def print_code_guess(pegs, highlighted)
     colors = %i[red green brown blue magenta cyan]
-    to_print = ''
-    pegs.each do |peg|
-      peg = if peg.zero?
-              '_'
-            else
-              peg.to_s.send(colors[peg - 1])
-            end
-      to_print << " #{peg} "
-    end
+    to_print = color_code(' x ', '_', nil, pegs, colors)
     to_print = to_print.bg_green.bold.black if highlighted
-    print(to_print)
+    to_print
   end
 
   def print_key_pegs(pegs, highlighted)
-    colors = %i[green red]
+    to_print = color_code(' x', ' ', '•', pegs, %i[green red])
+    to_print = to_print.bg_green.bold.black if highlighted
+    to_print
+  end
+
+  def color_code(margin_str, zero_str, value_str, pegs, colors)
     to_print = ''
     pegs.each do |peg|
       peg = if peg.zero?
-              ' '
+              zero_str
             else
-              '•'.to_s.send(colors[peg - 1])
+              value_str = peg if value_str
+              value_str.to_s.send(colors[peg - 1])
             end
-      to_print << " #{peg}"
+      to_print << margin_str.gsub('x', peg)
     end
-    to_print = to_print.bg_green.bold.black if highlighted
-    print(to_print)
+    to_print
   end
 end
 
@@ -154,7 +157,7 @@ class Game
       print "#{item} : this should never happen\n" if item != 0 
       return item
     end
-    return key_pegs
+    key_pegs
   end
 end
 
