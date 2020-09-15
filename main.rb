@@ -1,3 +1,5 @@
+require 'pry'
+
 class String
   def black;          "\e[30m#{self}\e[0m" end
   def red;            "\e[31m#{self}\e[0m" end
@@ -46,12 +48,12 @@ After 12 turns if the codebreaker is unable to find the code, the codemaker wins
   end
 
   def make_new_board
-    @turns = Array.new(TURNS, { code_guess: Array.new(4, 0), key_pegs: Array.new(4, 0) })
+    @turns = Array.new(TURNS) { { code_guess: Array.new(4, 0), key_pegs: Array.new(4, 0) } }
     @code = Array.new(4, 0)
   end
 
-  def print_board(args={})
-    args[:show_code] ||= false
+  def print_board(args = {})
+    args[:show_code] ||= true
     args[:highlighted] ||= -1
     args[:print] ||= true
     args[:print_instructions] ||= true
@@ -88,9 +90,10 @@ After 12 turns if the codebreaker is unable to find the code, the codemaker wins
   end
 
   def print_secret_code(code, show, highlighted)
+    colors = %i[red green brown blue magenta cyan]
     to_print = ''
     if show
-      code.each { |peg| to_print << " #{peg} " }
+      code.each { |peg| to_print << " #{peg.to_s.send(colors[peg - 1])} " }
     else
       code.each { to_print << ' ? ' }
     end
@@ -107,7 +110,7 @@ After 12 turns if the codebreaker is unable to find the code, the codemaker wins
   end
 
   def print_key_pegs(pegs, highlighted, key_help)
-    to_print = color_code('x', ' ', '•', pegs, %i[green red]).rstrip
+    to_print = color_code('x', '', '•', pegs, %i[green red]).rstrip
     to_print = to_print.bg_green.bold.black if highlighted
     to_print << print_key_help(pegs) if key_help
     to_print
@@ -118,8 +121,9 @@ After 12 turns if the codebreaker is unable to find the code, the codemaker wins
     pegs.each do |peg|
       peg = if peg.zero?
               zero_str
+            elsif value_str.nil?
+              peg.to_s.send(colors[peg - 1])
             else
-              value_str = peg if value_str.nil?
               value_str.to_s.send(colors[peg - 1])
             end
       to_print << margin_str.gsub('x', peg)
@@ -129,11 +133,12 @@ After 12 turns if the codebreaker is unable to find the code, the codemaker wins
 
   def print_key_help(pegs)
     help = []
-    help.push " #{pegs.count(0)} incorrect guesses" unless pegs.count(0).zero?
-    help.push " #{pegs.count(1).to_s.green} guesses with correct color and position" unless pegs.count(1).zero?
-    help.push " #{pegs.count(2).to_s.red} guesses with correct color but wrong position" unless pegs.count(2).zero?
+    help.push "#{pegs.count(0)} incorrect" unless pegs.count(0).zero?
+    help.push "#{pegs.count(1).to_s.green} with correct color and position" unless pegs.count(1).zero?
+    help.push "#{pegs.count(2).to_s.red} with correct color but wrong position" unless pegs.count(2).zero?
     help.shuffle!
-    help.join ', '
+    help = help.join ', '
+    "   (" << help << ")"
   end
 end
 
@@ -148,17 +153,18 @@ class Game
     codemaker = 1
     codebreaker = 0
     loop do
-      @board.code = player[codemaker].get_code
+      @board.code = @players[codemaker].make_code
       @board.print_board
       turn = 0
       while turn < TURNS
-        code_guess = player[codebreaker].get_guess
+        code_guess = @players[codebreaker].make_guess
         @board.turns[turn][:code_guess] = code_guess
-        key_pegs = get_key_pegs(code_guess, @board.code)
+        key_pegs = get_key_pegs(code_guess, @board.code.clone)
         @board.turns[turn][:key_pegs] = key_pegs
         @board.print_board
         if key_pegs == [1, 1, 1, 1]
-          puts "Player #{player[codebreaker].name} guessed #{player[codemaker].name}'s code in #{turn} turns!\n#{'#{player[codebreaker].name} won!!'.green.bold.bg_black}"
+          @board.make_new_board
+          puts "Player #{@players[codebreaker].name} guessed #{@players[codemaker].name}'s code in #{turn} turns!\n#{"#{@players[codebreaker].name} won!!".green.bold.bg_black}"
           # TODO: decide the next codemaker and codebreaker
           break
         end
@@ -173,34 +179,53 @@ class Game
     key_pegs = code_guess.each_with_index.map do |guess_peg, i|
       guess_peg == code[i] ? 1 : 0
     end
-    key_pegs.reverse_each.with_index do |item, i| 
-      i = key_pegs.lenght - (i + 1)
-      code.delete_at(i) if item == 1
-    end
-    key_pegs.map! do |item|
-      return 1 if item == 1
-
-      if code.include? item
-        code.delete_at(code.index(item) || code.length)
-        return 2
+    puts "#{key_pegs} : #{code} #{code_guess}"
+    key_pegs.reverse_each.with_index do |item, i|
+      i = key_pegs.length - (i + 1)
+      if item == 1
+        code.delete_at(i)
+        code_guess.delete_at(i)
       end
-      # TODO: delete line below after testing
-      print "#{item} : this should never happen\n" if item != 0
-      return item
     end
-    key_pegs
+    puts "#{key_pegs} : #{code} #{code_guess}"
+    key_pegs.each_with_index do |item, i|
+      if (code.include? code_guess[i]) && (item.zero?)
+        code.delete_at(code.index(code_guess[i]))
+        key_pegs[i] = 2
+      end
+    end
+    puts "#{key_pegs} : #{code} #{code_guess}"
+    key_pegs.shuffle
   end
 end
 
-# TODO: implement .name and .get_guess
+# TODO: make .make_code prettier in the terminal
 # Handles the computer logic
 class ComputerPlayer
+  attr_accessor :name
+  def initialize(board)
+    @board = board
+    @name = 'the computer'
+  end
+
+  def make_code
+    Array.new(4) { rand(1..6) }
+  end
 end
 
-# TODO: implement .name and .get_guess
+# TODO: implement .name and .make_guess
 # Handles user input
 class HumanPlayer
+  attr_accessor :name
+  def initialize
+    @name = 'the human player'
+  end
+
+  def make_guess
+    print('come on! make a guess: ')
+    gets.rstrip.split('').map(&:to_i)
+  end
 end
 
-test = Board.new
-test.print_board
+test = Game.new
+test.play
