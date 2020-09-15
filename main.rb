@@ -30,6 +30,17 @@ TURNS = 12
 class Board
   attr_accessor :turns, :code
 
+  @@instructions = "HOW DOES THIS GAME WORK? INSTRUCTIONS:
+The codemaker makes a code (I'ts the #{'│'.red} ?  ?  ?  ? #{'│'.red} you see)
+  EACH TURN:
+  1-The codebreaker takes a guess
+  2-He receives feedback for each guess with keys:
+      No key = wrong guess
+           #{'•'.red} = wrong position, correct color
+           #{'•'.green} = correct position, correct color
+  3-If the codebreaker guesses the code he wins
+After 12 turns if the codebreaker is unable to find the code, the codemaker wins\n\n"
+
   def initialize
     make_new_board
   end
@@ -39,13 +50,23 @@ class Board
     @code = Array.new(4, 0)
   end
 
-  def print_board(show_code = false, highlighted = -1, print = true)
-    to_print = print_line(@code, show_code, highlighted.zero?)
-    to_print << "------------|\n"
+  def print_board(args={})
+    args[:show_code] ||= false
+    args[:highlighted] ||= -1
+    args[:print] ||= true
+    args[:print_instructions] ||= true
+
+    to_print = ''
+    to_print << @@instructions if args[:print_instructions]
+
+    to_print << "  MASTERMIND  \n".red.underline
+    to_print << print_line(@code, args[:show_code], args[:highlighted].zero?)
+    to_print << "├────────────┤\n".red
     @turns.each_with_index do |line, i|
-      to_print << print_line(line, true, highlighted == (i + 1))
+      to_print << print_line(line, true, args[:highlighted] == (i + 1), !line[:code_guess].include?(0))
     end
-    if print
+    to_print << "\n"
+    if args[:print]
       print(to_print)
     else
       to_print
@@ -54,14 +75,14 @@ class Board
 
   private
 
-  def print_line(line, show, highlighted)
-    to_print = ''
+  def print_line(line, show, highlighted, key_help = false)
+    to_print = '│'.red
     if line.is_a?(Array)
       to_print << print_secret_code(line, show, highlighted)
     else
       to_print << print_code_guess(line[:code_guess], highlighted)
-      to_print << '|'
-      to_print << print_key_pegs(line[:key_pegs], highlighted).rstrip
+      to_print << '│'.red
+      to_print << print_key_pegs(line[:key_pegs], false, key_help)
     end
     to_print << "\n"
   end
@@ -73,7 +94,7 @@ class Board
     else
       code.each { to_print << ' ? ' }
     end
-    to_print << '|'
+    to_print << '│'.red
     to_print = to_print.bg_green.bold.black if highlighted
     to_print
   end
@@ -85,9 +106,10 @@ class Board
     to_print
   end
 
-  def print_key_pegs(pegs, highlighted)
-    to_print = color_code(' x', ' ', '•', pegs, %i[green red])
+  def print_key_pegs(pegs, highlighted, key_help)
+    to_print = color_code('x', ' ', '•', pegs, %i[green red]).rstrip
     to_print = to_print.bg_green.bold.black if highlighted
+    to_print << print_key_help(pegs) if key_help
     to_print
   end
 
@@ -97,12 +119,21 @@ class Board
       peg = if peg.zero?
               zero_str
             else
-              value_str = peg if value_str
+              value_str = peg if value_str.nil?
               value_str.to_s.send(colors[peg - 1])
             end
       to_print << margin_str.gsub('x', peg)
     end
     to_print
+  end
+
+  def print_key_help(pegs)
+    help = []
+    help.push " #{pegs.count(0)} incorrect guesses" unless pegs.count(0).zero?
+    help.push " #{pegs.count(1).to_s.green} guesses with correct color and position" unless pegs.count(1).zero?
+    help.push " #{pegs.count(2).to_s.red} guesses with correct color but wrong position" unless pegs.count(2).zero?
+    help.shuffle!
+    help.join ', '
   end
 end
 
@@ -110,7 +141,7 @@ end
 class Game
   def initialize
     @board = Board.new
-    @players = [HumanPlayer.new, ComputerPlayer.new]
+    @players = [HumanPlayer.new, ComputerPlayer.new(@board)]
   end
 
   def play
@@ -126,7 +157,7 @@ class Game
         key_pegs = get_key_pegs(code_guess, @board.code)
         @board.turns[turn][:key_pegs] = key_pegs
         @board.print_board
-        if key_pegs == [1,1,1,1]
+        if key_pegs == [1, 1, 1, 1]
           puts "Player #{player[codebreaker].name} guessed #{player[codemaker].name}'s code in #{turn} turns!\n#{'#{player[codebreaker].name} won!!'.green.bold.bg_black}"
           # TODO: decide the next codemaker and codebreaker
           break
@@ -154,7 +185,7 @@ class Game
         return 2
       end
       # TODO: delete line below after testing
-      print "#{item} : this should never happen\n" if item != 0 
+      print "#{item} : this should never happen\n" if item != 0
       return item
     end
     key_pegs
