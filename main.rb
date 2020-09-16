@@ -57,6 +57,7 @@ After 12 turns if the codebreaker is unable to find the code, the codemaker wins
     args[:highlighted] ||= -1
     args[:print] ||= true
     args[:print_instructions] ||= true
+    args[:print_key_help] ||= true
 
     to_print = ''
     to_print << @@instructions if args[:print_instructions]
@@ -65,9 +66,9 @@ After 12 turns if the codebreaker is unable to find the code, the codemaker wins
     to_print << print_line(@code, args[:show_code], args[:highlighted].zero?)
     to_print << "├────────────┤\n".red
     @turns.each_with_index do |line, i|
-      to_print << print_line(line, true, args[:highlighted] == (i + 1), !line[:code_guess].include?(0))
+      print_key_help = !line[:code_guess].include?(0) && args[:print_key_help]
+      to_print << print_line(line, true, args[:highlighted] == (i + 1), print_key_help)
     end
-    to_print << "\n"
     if args[:print]
       print(to_print)
     else
@@ -84,7 +85,8 @@ After 12 turns if the codebreaker is unable to find the code, the codemaker wins
     else
       to_print << print_code_guess(line[:code_guess], highlighted)
       to_print << '│'.red
-      to_print << print_key_pegs(line[:key_pegs], false, key_help)
+      to_print << print_key_pegs(line[:key_pegs], false)
+      to_print << print_key_help(line[:key_pegs]) if key_help
     end
     to_print << "\n"
   end
@@ -104,19 +106,18 @@ After 12 turns if the codebreaker is unable to find the code, the codemaker wins
 
   def print_code_guess(pegs, highlighted)
     colors = %i[red green brown blue magenta cyan]
-    to_print = color_code(' x ', '_', nil, pegs, colors)
+    to_print = color_line(' x ', '_', nil, pegs, colors)
     to_print = to_print.bg_green.bold.black if highlighted
     to_print
   end
 
-  def print_key_pegs(pegs, highlighted, key_help)
-    to_print = color_code('x', '', '•', pegs, %i[green red]).rstrip
+  def print_key_pegs(pegs, highlighted)
+    to_print = color_line('x', '', '•', pegs, %i[green red]).rstrip
     to_print = to_print.bg_green.bold.black if highlighted
-    to_print << print_key_help(pegs) if key_help
     to_print
   end
 
-  def color_code(margin_str, zero_str, value_str, pegs, colors)
+  def color_line(margin_str, zero_str, value_str, pegs, colors)
     to_print = ''
     pegs.each do |peg|
       peg = if peg.zero?
@@ -155,11 +156,11 @@ class Game
     loop do
       @board.code = @players[codemaker].make_code
       @board.print_board
-      turn = 0
+      turn = TURNS - 1
       while turn < TURNS
         code_guess = @players[codebreaker].make_guess
         @board.turns[turn][:code_guess] = code_guess
-        key_pegs = get_key_pegs(code_guess, @board.code.clone)
+        key_pegs = get_key_pegs(code_guess.clone, @board.code.clone)
         @board.turns[turn][:key_pegs] = key_pegs
         @board.print_board
         if key_pegs == [1, 1, 1, 1]
@@ -168,7 +169,7 @@ class Game
           # TODO: decide the next codemaker and codebreaker
           break
         end
-        turn += 1
+        turn -= 1
       end
     end
   end
