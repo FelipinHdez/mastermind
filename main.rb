@@ -32,16 +32,10 @@ TURNS = 12
 class Board
   attr_accessor :turns, :code
 
-  @@instructions = "HOW DOES THIS GAME WORK? INSTRUCTIONS:
-The codemaker makes a code (I'ts the #{'│'.red} ?  ?  ?  ? #{'│'.red} you see)
-  EACH TURN:
-  1-The codebreaker takes a guess
-  2-He receives feedback for each guess with keys:
-          ◦ = wrong guess
-          #{'•'.red} = wrong position, correct color
-          #{'•'.green} = correct position, correct color
-  3-If the codebreaker guesses the code he wins
-After #{TURNS} turns if the codebreaker is unable to find the code, the codemaker wins\n\n"
+  @@instructions = ['',"◦ = wrong guess
+#{'•'.red} = wrong position, correct color
+#{'•'.green} = correct position, correct color
+(Not in order)\n"]
 
   def initialize
     make_new_board
@@ -56,25 +50,24 @@ After #{TURNS} turns if the codebreaker is unable to find the code, the codemake
   def print_board(
     show_code: false,
     highlighted: -1,
-    print: true,
-    print_instructions: true,
+    print_output: true,
+    instructions: 0,
     print_key_help: true,
     end_string: [0, ''])
 
     clear_terminal
+
     to_print = ''
-    to_print << @@instructions if print_instructions
+    to_print << @@instructions[instructions]
 
     to_print << "  MASTERMIND  \n".red.underline
-    end_string = end_string[0] == 0 ? end_string[1] : ''
-    to_print << print_line(@code, show_code, highlighted.zero?, end_string)
+    to_print << print_line(@code, show_code, highlighted.zero?, end_string[0] == 0 ? end_string[1] : '')
     to_print << "├────────────┤\n".red
     @turns.each_with_index do |line, i|
       print_key_help = !line[:code_guess].include?(0) && print_key_help
-      end_string = end_string[0] == (i + 1) ? end_string[1] : ''
-      to_print << print_line(line, true, highlighted == (i + 1), end_string, print_key_help)
+      to_print << print_line(line, true, highlighted == (i + 1), end_string[0] == (i + 1) ? end_string[1] : '', print_key_help)
     end
-    if print
+    if print_output
       print(to_print)
     else
       to_print
@@ -177,7 +170,7 @@ class Game
         if key_pegs == [1, 1, 1, 1]
           @board.make_new_board
           puts "#{@players[codebreaker].name.capitalize} guessed #{@players[codemaker].name}'s code in #{turn} turns!".green.bold.bg_black
-          puts "@players[codebreaker].name.capitalize} won!!".green.bold.bg_black
+          puts "#{@players[codebreaker].name.capitalize} won!!".green.bold.bg_black
           codebreaker, codemaker = codemaker, codebreaker if @players[codebreaker].switch_codebreaker?
           break
         end
@@ -223,18 +216,18 @@ class ComputerPlayer
 
   def make_code
     message = '← MAKING RANDOM CODE'.red
-    @board.print_board({end_string: [0, message], show_code: true, print_instructions: false})
+    @board.print_board(end_string: [0, message], show_code: true, instructions: 0)
 
     duration = 4
     iteration_sleep = 0.05
     (duration/iteration_sleep).to_i.times do
       @board.code = rand_code
-      @board.print_board({end_string: [0, message], show_code: true, print_instructions: false})
+      @board.print_board(end_string: [0, message], show_code: true, instructions: 0)
       sleep iteration_sleep
     end
 
-    @board.print_board
-    sleep 0.1
+    @board.print_board(end_string: [0, message], instructions: 0)
+    sleep 1.5
 
     rand_code
   end
@@ -255,7 +248,7 @@ class HumanPlayer
   def make_guess(turn)
     colors = %i[red green brown blue magenta cyan]
     message = '   ← GUESS ' << '(from 1 to 6)'.red
-    @board.print_board({end_string: [(TURNS - turn), message]})
+    @board.print_board(end_string: [(TURNS - turn), message])
     guesses = []
     print "\e[#{turn + 1}A\e[2C"
     while guesses.length != 4
@@ -276,17 +269,6 @@ class HumanPlayer
   end
 
   private
-
-  def print_guesses(guesses, enter_message = false)
-  colors = %i[red green brown blue magenta cyan]
-  to_print = "\r"
-  guesses.each do |guess|
-    to_print << "  #{guess.to_s.send(colors[guess - 1])}"
-  end
-  to_print << "  _" * (4 - guesses.length)
-  to_print << "  ← Your guess #{'(from 1 to 6)'.red}"
-  to_print
-  end
 end
 
 test = Game.new
