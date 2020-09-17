@@ -37,11 +37,11 @@ The codemaker makes a code (I'ts the #{'│'.red} ?  ?  ?  ? #{'│'.red} you se
   EACH TURN:
   1-The codebreaker takes a guess
   2-He receives feedback for each guess with keys:
-      No key = wrong guess
-           #{'•'.red} = wrong position, correct color
-           #{'•'.green} = correct position, correct color
+          ◦ = wrong guess
+          #{'•'.red} = wrong position, correct color
+          #{'•'.green} = correct position, correct color
   3-If the codebreaker guesses the code he wins
-After 12 turns if the codebreaker is unable to find the code, the codemaker wins\n\n"
+After #{TURNS} turns if the codebreaker is unable to find the code, the codemaker wins\n\n"
 
   def initialize
     make_new_board
@@ -59,17 +59,20 @@ After 12 turns if the codebreaker is unable to find the code, the codemaker wins
     args[:print] ||= true
     args[:print_instructions] ||= true
     args[:print_key_help] ||= true
+    args[:end_string] ||= [0, '']
 
     clear_terminal
     to_print = ''
     to_print << @@instructions if args[:print_instructions]
 
     to_print << "  MASTERMIND  \n".red.underline
-    to_print << print_line(@code, args[:show_code], args[:highlighted].zero?)
+    end_string = args[:end_string][0] == 0 ? args[:end_string][1] : ''
+    to_print << print_line(@code, args[:show_code], args[:highlighted].zero?, end_string)
     to_print << "├────────────┤\n".red
     @turns.each_with_index do |line, i|
       print_key_help = !line[:code_guess].include?(0) && args[:print_key_help]
-      to_print << print_line(line, true, args[:highlighted] == (i + 1), print_key_help)
+      end_string = args[:end_string][0] == (i + 1) ? args[:end_string][1] : ''
+      to_print << print_line(line, true, args[:highlighted] == (i + 1), end_string, print_key_help)
     end
     if args[:print]
       print(to_print)
@@ -80,7 +83,7 @@ After 12 turns if the codebreaker is unable to find the code, the codemaker wins
 
   private
 
-  def print_line(line, show, highlighted, key_help = false)
+  def print_line(line, show, highlighted, end_string, key_help = false)
     separator = highlighted ? '│'.red.bg_green.bold.black : '│'.red
     to_print = ''
     to_print << separator
@@ -92,7 +95,7 @@ After 12 turns if the codebreaker is unable to find the code, the codemaker wins
       to_print << print_key_pegs(line[:key_pegs], false)
       to_print << print_key_help(line[:key_pegs]) if key_help
     end
-    to_print << "\n"
+    to_print << end_string << "\n"
   end
 
   def print_secret_code(code, show, highlighted)
@@ -116,7 +119,7 @@ After 12 turns if the codebreaker is unable to find the code, the codemaker wins
   end
 
   def print_key_pegs(pegs, highlighted)
-    to_print = color_line('x', '', '•', pegs, %i[green red]).rstrip
+    to_print = color_line('x', '◦', '•', pegs, %i[green red]).rstrip
     to_print = to_print.bg_green.bold.black if highlighted
     to_print
   end
@@ -154,7 +157,7 @@ end
 class Game
   def initialize
     @board = Board.new
-    @players = [HumanPlayer.new, ComputerPlayer.new(@board)]
+    @players = [HumanPlayer.new(@board), ComputerPlayer.new(@board)]
   end
 
   def play
@@ -162,15 +165,15 @@ class Game
     codebreaker = 0
     loop do
       @board.code = @players[codemaker].make_code
-      @board.print_board({highlighted: TURNS})
+      @board.print_board
       turn = 0
       while turn < TURNS
         board_row = TURNS - (turn + 1)
-        code_guess = @players[codebreaker].make_guess
+        code_guess = @players[codebreaker].make_guess(turn)
         @board.turns[board_row][:code_guess] = code_guess
         key_pegs = get_key_pegs(code_guess.clone, @board.code.clone)
         @board.turns[board_row][:key_pegs] = key_pegs
-        @board.print_board({highlighted: board_row})
+        @board.print_board
         if key_pegs == [1, 1, 1, 1]
           @board.make_new_board
           puts "#{@players[codebreaker].name.capitalize} guessed #{@players[codemaker].name}'s code in #{turn} turns!".green.bold.bg_black
@@ -224,31 +227,31 @@ class ComputerPlayer
   end
 end
 
-# TODO: make .make_guess prettier in the terminal
 # Handles user input
 class HumanPlayer
   attr_accessor :name
-  def initialize
+  def initialize(board)
     @name = 'the human player'
+    @board = board
   end
 
-  def make_guess
+  def make_guess(turn)
+    colors = %i[red green brown blue magenta cyan]
+    message = '   ← GUESS ' << '(from 1 to 6)'.red
+    @board.print_board({end_string: [(TURNS - turn), message]})
     guesses = []
-    print(print_guesses(guesses))
-    print("\r" << print_guesses(guesses)[0, (guesses.length + 1) * 3])
+    print "\e[#{turn + 1}A\e[2C"
     while guesses.length != 4
       input = STDIN.getch
-      exit if ["\u0018", "\u0003"].include? input
-      if input == "\u007F"
+      exit if input=="\u0018" or input=="\u0003"
+      if input == "\u007F" && !guesses.length.zero?
         guesses.pop
-        print(print_guesses(guesses))
-        print("\r" << print_guesses(guesses)[0, (guesses.length + 1) * 3])
+        print "\e[3D_\e[1D"
       end
       input = input.to_i
-      if input.between?(1, 6)
-        guesses.push input
-        print(print_guesses(guesses))
-        print("\r" << print_guesses(guesses)[0, (guesses.length) * 3])
+      if input.between?(1,6)
+        guesses.push(input)
+        print "#{input.to_s.send(colors[input - 1])}\e[2C"
       end
     end
     sleep 0.4
