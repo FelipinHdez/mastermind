@@ -53,28 +53,28 @@ After #{TURNS} turns if the codebreaker is unable to find the code, the codemake
   end
 
   # I should have used a command line framework instead of this mess
-  def print_board(args = {})
-    args[:show_code] ||= true
-    args[:highlighted] ||= -1
-    args[:print] ||= true
-    args[:print_instructions] ||= true
-    args[:print_key_help] ||= true
-    args[:end_string] ||= [0, '']
+  def print_board(
+    show_code: false,
+    highlighted: -1,
+    print: true,
+    print_instructions: true,
+    print_key_help: true,
+    end_string: [0, ''])
 
     clear_terminal
     to_print = ''
-    to_print << @@instructions if args[:print_instructions]
+    to_print << @@instructions if print_instructions
 
     to_print << "  MASTERMIND  \n".red.underline
-    end_string = args[:end_string][0] == 0 ? args[:end_string][1] : ''
-    to_print << print_line(@code, args[:show_code], args[:highlighted].zero?, end_string)
+    end_string = end_string[0] == 0 ? end_string[1] : ''
+    to_print << print_line(@code, show_code, highlighted.zero?, end_string)
     to_print << "├────────────┤\n".red
     @turns.each_with_index do |line, i|
-      print_key_help = !line[:code_guess].include?(0) && args[:print_key_help]
-      end_string = args[:end_string][0] == (i + 1) ? args[:end_string][1] : ''
-      to_print << print_line(line, true, args[:highlighted] == (i + 1), end_string, print_key_help)
+      print_key_help = !line[:code_guess].include?(0) && print_key_help
+      end_string = end_string[0] == (i + 1) ? end_string[1] : ''
+      to_print << print_line(line, true, highlighted == (i + 1), end_string, print_key_help)
     end
-    if args[:print]
+    if print
       print(to_print)
     else
       to_print
@@ -213,7 +213,6 @@ class Game
   end
 end
 
-# TODO: make .make_code prettier in the terminal
 # Handles the computer logic
 class ComputerPlayer
   attr_accessor :name
@@ -223,6 +222,24 @@ class ComputerPlayer
   end
 
   def make_code
+    message = '← MAKING RANDOM CODE'.red
+    @board.print_board({end_string: [0, message], show_code: true, print_instructions: false})
+
+    duration = 4
+    iteration_sleep = 0.05
+    (duration/iteration_sleep).to_i.times do
+      @board.code = rand_code
+      @board.print_board({end_string: [0, message], show_code: true, print_instructions: false})
+      sleep iteration_sleep
+    end
+
+    @board.print_board
+    sleep 0.1
+
+    rand_code
+  end
+
+  def rand_code
     Array.new(4) { rand(1..6) }
   end
 end
