@@ -69,6 +69,7 @@ class Board
     end
     if print_output
       print(to_print)
+      STDOUT.flush
     else
       to_print
     end
@@ -151,30 +152,27 @@ class Game
   def initialize
     @board = Board.new
     @players = [HumanPlayer.new(@board), ComputerPlayer.new(@board)]
+    @turn = 0
+    @codemaker = 1
+    @codebreaker = 0
   end
 
   def play
-    codemaker = 1
-    codebreaker = 0
     loop do
-      @board.code = @players[codemaker].make_code
+      @board.code = @players[@codemaker].make_code
       @board.print_board
-      turn = 0
-      while turn < TURNS
-        board_row = TURNS - (turn + 1)
-        code_guess = @players[codebreaker].make_guess(turn)
+      while @turn < TURNS
+        board_row = TURNS - (@turn + 1)
+        code_guess = @players[@codebreaker].make_guess(@turn)
         @board.turns[board_row][:code_guess] = code_guess
         key_pegs = get_key_pegs(code_guess.clone, @board.code.clone)
         @board.turns[board_row][:key_pegs] = key_pegs
         @board.print_board
         if key_pegs == [1, 1, 1, 1]
-          @board.make_new_board
-          puts "#{@players[codebreaker].name.capitalize} guessed #{@players[codemaker].name}'s code in #{turn} turns!".green.bold.bg_black
-          puts "#{@players[codebreaker].name.capitalize} won!!".green.bold.bg_black
-          codebreaker, codemaker = codemaker, codebreaker if @players[codebreaker].switch_codebreaker?
+          game_over
           break
         end
-        turn+= 1
+        @turn+= 1
       end
       @board.make_new_board
     end
@@ -182,11 +180,18 @@ class Game
 
   private
 
+  def game_over
+    @board.print_board(show_code: true)
+    @board.make_new_board
+    puts "#{@players[@codebreaker].name.capitalize} guessed #{@players[@codemaker].name}'s code in #{@turn} turns!".green.bold.bg_black
+    puts "#{@players[@codebreaker].name.capitalize} won!!".green.bold.bg_black
+    @codebreaker, @codemaker = @codemaker, @codebreaker if @players.map(&:switch_roles?).all
+  end
+
   def get_key_pegs(code_guess, code)
     key_pegs = code_guess.each_with_index.map do |guess_peg, i|
       guess_peg == code[i] ? 1 : 0
     end
-    puts "#{key_pegs} : #{code} #{code_guess}"
     key_pegs.reverse_each.with_index do |item, i|
       i = key_pegs.length - (i + 1)
       if item == 1
@@ -194,14 +199,12 @@ class Game
         code_guess.delete_at(i)
       end
     end
-    puts "#{key_pegs} : #{code} #{code_guess}"
     key_pegs.each_with_index do |item, i|
       if (code.include? code_guess[i]) && (item.zero?)
         code.delete_at(code.index(code_guess[i]))
         key_pegs[i] = 2
       end
     end
-    puts "#{key_pegs} : #{code} #{code_guess}"
     key_pegs.shuffle
   end
 end
@@ -232,6 +235,17 @@ class ComputerPlayer
     rand_code
   end
 
+  def make_guess
+    # TODO: finish
+    rand_code
+  end
+
+  def switch_roles?
+    true
+  end
+
+  private
+
   def rand_code
     Array.new(4) { rand(1..6) }
   end
@@ -245,8 +259,13 @@ class HumanPlayer
     @board = board
   end
 
+  def make_code
+    # TODO: finish
+    print "\e[#{TURNS}A\e[2C"
+    print('hey')
+  end
+
   def make_guess(turn)
-    colors = %i[red green brown blue magenta cyan]
     message = '   ← GUESS ' << '(from 1 to 6)'.red
     @board.print_board(end_string: [(TURNS - turn), message])
     guesses = []
@@ -259,16 +278,26 @@ class HumanPlayer
         print "\e[3D_\e[1D"
       end
       input = input.to_i
-      if input.between?(1,6)
+      if input.between?(1, 6)
         guesses.push(input)
-        print "#{input.to_s.send(colors[input - 1])}\e[2C"
+        print "#{color(input)}\e[2C"
       end
     end
     sleep 0.4
     guesses
   end
 
+  def switch_roles?
+    puts 'Do you want to switch roles (codebreaker and codemaker)? (yes/no)'
+    gets.rstrip.downcase[0] == 'y'
+  end
+
   private
+
+  def color(str)
+    colors = %i[red green brown blue magenta cyan]
+    str.to_s.send(colors[str - 1])
+  end
 end
 
 test = Game.new
