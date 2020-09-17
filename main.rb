@@ -51,8 +51,8 @@ class Board
     show_code: false,
     highlighted: -1,
     print_output: true,
-    instructions: 0,
-    print_key_help: true,
+    instructions: 1,
+    print_key_help: false,
     end_string: [0, ''])
 
     clear_terminal
@@ -61,11 +61,11 @@ class Board
     to_print << @@instructions[instructions]
 
     to_print << "  MASTERMIND  \n".red.underline
-    to_print << print_line(@code, show_code, highlighted.zero?, end_string[0] == 0 ? end_string[1] : '')
+    to_print << print_line(@code, show_code, highlighted.zero?, end_string[0].zero? ? end_string[1] : '')
     to_print << "├────────────┤\n".red
     @turns.each_with_index do |line, i|
-      print_key_help = !line[:code_guess].include?(0) && print_key_help
-      to_print << print_line(line, true, highlighted == (i + 1), end_string[0] == (i + 1) ? end_string[1] : '', print_key_help)
+      key_help = !line[:code_guess].include?(0) && print_key_help
+      to_print << print_line(line, true, highlighted == (i + 1), end_string[0] == (i + 1) ? end_string[1] : '', key_help)
     end
     if print_output
       print(to_print)
@@ -138,7 +138,6 @@ class Board
     help.push "#{pegs.count(0)} incorrect" unless pegs.count(0).zero?
     help.push "#{pegs.count(1).to_s.green} with correct color and position" unless pegs.count(1).zero?
     help.push "#{pegs.count(2).to_s.red} with correct color but wrong position" unless pegs.count(2).zero?
-    help.shuffle!
     "   (#{help.join ', '})"
   end
 
@@ -167,8 +166,7 @@ class Game
         @board.turns[board_row][:code_guess] = code_guess
         key_pegs = get_key_pegs(code_guess.clone, @board.code.clone)
         @board.turns[board_row][:key_pegs] = key_pegs
-        @board.print_board
-        if key_pegs == [1, 1, 1, 1]
+        if key_pegs == [1, 1, 1, 1] || @turn + 1 == TURNS
           game_over
           break
         end
@@ -181,11 +179,20 @@ class Game
   private
 
   def game_over
+    if @turn + 1 == TURNS
+      winner, loser = [1, 0]
+    else
+      winner, loser = [0, 1]
+    end
     @board.print_board(show_code: true)
     @board.make_new_board
-    puts "#{@players[@codebreaker].name.capitalize} guessed #{@players[@codemaker].name}'s code in #{@turn} turns!".green.bold.bg_black
-    puts "#{@players[@codebreaker].name.capitalize} won!!".green.bold.bg_black
-    @codebreaker, @codemaker = @codemaker, @codebreaker if @players.map(&:switch_roles?).all
+    if winner == @codebreaker
+      puts "#{@players[winner].name.capitalize} guessed #{@players[loser].name}'s code in #{@turn + 1} turns!".green.bold.bg_black
+    else
+      puts "#{@players[loser].name.capitalize} couldn't guess #{@players[winner].name}'s code after #{@turn + 1} turns".green.bold.bg_black
+    end
+    puts "#{@players[winner].name.capitalize} won!!".green.bold.bg_black
+    @codebreaker, @codemaker = @codemaker, @codebreaker if @players.map(&:switch_roles?).all?
   end
 
   def get_key_pegs(code_guess, code)
@@ -288,7 +295,7 @@ class HumanPlayer
   end
 
   def switch_roles?
-    puts 'Do you want to switch roles (codebreaker and codemaker)? (yes/no)'
+    prints 'Do you want to switch codebreaker and codemaker roles? (yes/no)...'
     gets.rstrip.downcase[0] == 'y'
   end
 
