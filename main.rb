@@ -1,4 +1,4 @@
-require 'pry'
+require 'io/console'
 
 class String
   def black;          "\e[30m#{self}\e[0m" end
@@ -52,6 +52,7 @@ After 12 turns if the codebreaker is unable to find the code, the codemaker wins
     @code = Array.new(4, 0)
   end
 
+  # I should have used a command line framework instead of this mess
   def print_board(args = {})
     args[:show_code] ||= true
     args[:highlighted] ||= -1
@@ -59,6 +60,7 @@ After 12 turns if the codebreaker is unable to find the code, the codemaker wins
     args[:print_instructions] ||= true
     args[:print_key_help] ||= true
 
+    clear_terminal
     to_print = ''
     to_print << @@instructions if args[:print_instructions]
 
@@ -79,12 +81,14 @@ After 12 turns if the codebreaker is unable to find the code, the codemaker wins
   private
 
   def print_line(line, show, highlighted, key_help = false)
-    to_print = '│'.red
+    separator = highlighted ? '│'.red.bg_green.bold.black : '│'.red
+    to_print = ''
+    to_print << separator
     if line.is_a?(Array)
       to_print << print_secret_code(line, show, highlighted)
     else
       to_print << print_code_guess(line[:code_guess], highlighted)
-      to_print << '│'.red
+      to_print << separator
       to_print << print_key_pegs(line[:key_pegs], false)
       to_print << print_key_help(line[:key_pegs]) if key_help
     end
@@ -138,8 +142,11 @@ After 12 turns if the codebreaker is unable to find the code, the codemaker wins
     help.push "#{pegs.count(1).to_s.green} with correct color and position" unless pegs.count(1).zero?
     help.push "#{pegs.count(2).to_s.red} with correct color but wrong position" unless pegs.count(2).zero?
     help.shuffle!
-    help = help.join ', '
-    "   (" << help << ")"
+    "   (#{help.join ', '})"
+  end
+
+  def clear_terminal()
+    system("clear") || system("cls")
   end
 end
 
@@ -155,22 +162,25 @@ class Game
     codebreaker = 0
     loop do
       @board.code = @players[codemaker].make_code
-      @board.print_board
-      turn = TURNS - 1
+      @board.print_board({highlighted: TURNS})
+      turn = 0
       while turn < TURNS
+        board_row = TURNS - (turn + 1)
         code_guess = @players[codebreaker].make_guess
-        @board.turns[turn][:code_guess] = code_guess
+        @board.turns[board_row][:code_guess] = code_guess
         key_pegs = get_key_pegs(code_guess.clone, @board.code.clone)
-        @board.turns[turn][:key_pegs] = key_pegs
-        @board.print_board
+        @board.turns[board_row][:key_pegs] = key_pegs
+        @board.print_board({highlighted: board_row})
         if key_pegs == [1, 1, 1, 1]
           @board.make_new_board
-          puts "Player #{@players[codebreaker].name} guessed #{@players[codemaker].name}'s code in #{turn} turns!\n#{"#{@players[codebreaker].name} won!!".green.bold.bg_black}"
-          # TODO: decide the next codemaker and codebreaker
+          puts "#{@players[codebreaker].name.capitalize} guessed #{@players[codemaker].name}'s code in #{turn} turns!".green.bold.bg_black
+          puts "@players[codebreaker].name.capitalize} won!!".green.bold.bg_black
+          codebreaker, codemaker = codemaker, codebreaker if @players[codebreaker].switch_codebreaker?
           break
         end
-        turn -= 1
+        turn+= 1
       end
+      @board.make_new_board
     end
   end
 
@@ -214,7 +224,7 @@ class ComputerPlayer
   end
 end
 
-# TODO: implement .name and .make_guess
+# TODO: make .make_guess prettier in the terminal
 # Handles user input
 class HumanPlayer
   attr_accessor :name
@@ -223,8 +233,39 @@ class HumanPlayer
   end
 
   def make_guess
-    print('come on! make a guess: ')
-    gets.rstrip.split('').map(&:to_i)
+    guesses = []
+    print(print_guesses(guesses))
+    print("\r" << print_guesses(guesses)[0, (guesses.length + 1) * 3])
+    while guesses.length != 4
+      input = STDIN.getch
+      exit if ["\u0018", "\u0003"].include? input
+      if input == "\u007F"
+        guesses.pop
+        print(print_guesses(guesses))
+        print("\r" << print_guesses(guesses)[0, (guesses.length + 1) * 3])
+      end
+      input = input.to_i
+      if input.between?(1, 6)
+        guesses.push input
+        print(print_guesses(guesses))
+        print("\r" << print_guesses(guesses)[0, (guesses.length) * 3])
+      end
+    end
+    sleep 0.4
+    guesses
+  end
+
+  private
+
+  def print_guesses(guesses, enter_message = false)
+  colors = %i[red green brown blue magenta cyan]
+  to_print = "\r"
+  guesses.each do |guess|
+    to_print << "  #{guess.to_s.send(colors[guess - 1])}"
+  end
+  to_print << "  _" * (4 - guesses.length)
+  to_print << "  ← Your guess #{'(from 1 to 6)'.red}"
+  to_print
   end
 end
 
