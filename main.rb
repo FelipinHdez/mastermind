@@ -26,7 +26,7 @@ class String
   def reverse_color;  "\e[7m#{self}\e[27m" end
 end
 
-TURNS = 12
+TURNS = 3
 
 # Stores the pegs
 class Board
@@ -172,7 +172,6 @@ class Game
         end
         @turn+= 1
       end
-      @board.make_new_board
     end
   end
 
@@ -180,9 +179,11 @@ class Game
 
   def game_over
     if @turn + 1 == TURNS
-      winner, loser = [1, 0]
+      winner = @codemaker
+      loser = @codebreaker
     else
-      winner, loser = [0, 1]
+      winner = @codebreaker
+      loser = @codemaker
     end
     @board.print_board(show_code: true)
     @board.make_new_board
@@ -192,7 +193,10 @@ class Game
       puts "#{@players[loser].name.capitalize} couldn't guess #{@players[winner].name}'s code after #{@turn + 1} turns".green.bold.bg_black
     end
     puts "#{@players[winner].name.capitalize} won!!".green.bold.bg_black
+    sleep 1
     @codebreaker, @codemaker = @codemaker, @codebreaker if @players.map(&:switch_roles?).all?
+    @board.make_new_board
+    @turn = 0
   end
 
   def get_key_pegs(code_guess, code)
@@ -242,7 +246,7 @@ class ComputerPlayer
     rand_code
   end
 
-  def make_guess
+  def make_guess(_turn)
     # TODO: finish
     rand_code
   end
@@ -267,22 +271,38 @@ class HumanPlayer
   end
 
   def make_code
-    # TODO: finish
-    print "\e[#{TURNS}A\e[2C"
-    print('hey')
+    message = '   ← MAKE CODE ' << '(from 1 to 6)'.red
+    @board.print_board(end_string: [0, message])
+    print "\e[#{TURNS + 2}A\e[2C"
+    code = input_code('?')
+    sleep 0.4
+    code
   end
 
   def make_guess(turn)
     message = '   ← GUESS ' << '(from 1 to 6)'.red
     @board.print_board(end_string: [(TURNS - turn), message])
-    guesses = []
     print "\e[#{turn + 1}A\e[2C"
+    guess = input_code('_')
+    sleep 0.4
+    guess
+  end
+
+  def switch_roles?
+    print 'Do you want to switch codebreaker and codemaker roles? (yes/no)... '
+    gets.rstrip.downcase.tr('0-9', '')[0] == 'y'
+  end
+
+  private
+
+  def input_code(fill_char)
+    guesses = []
     while guesses.length != 4
       input = STDIN.getch
       exit if input=="\u0018" or input=="\u0003"
       if input == "\u007F" && !guesses.length.zero?
         guesses.pop
-        print "\e[3D_\e[1D"
+        print "\e[3D#{fill_char}\e[1D"
       end
       input = input.to_i
       if input.between?(1, 6)
@@ -290,16 +310,8 @@ class HumanPlayer
         print "#{color(input)}\e[2C"
       end
     end
-    sleep 0.4
     guesses
   end
-
-  def switch_roles?
-    prints 'Do you want to switch codebreaker and codemaker roles? (yes/no)...'
-    gets.rstrip.downcase[0] == 'y'
-  end
-
-  private
 
   def color(str)
     colors = %i[red green brown blue magenta cyan]
