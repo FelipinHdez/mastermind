@@ -7,5 +7,5 @@ require_relative 'lib/computer'
 
 TURNS = 12
 
-test = Game.new
-test.play
+game = Game.new
+game.play

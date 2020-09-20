@@ -1,12 +1,16 @@
+require_relative 'key_pegs'
 
 # Handles game logic
 class Game
+
+  include Key_pegs
+
   def initialize
     @board = Board.new
     @players = [HumanPlayer.new(@board), ComputerPlayer.new(@board)]
     @turn = 0
-    @codemaker = 1
-    @codebreaker = 0
+    @codemaker = 0
+    @codebreaker = 1
   end
 
   def play
@@ -17,8 +21,9 @@ class Game
         board_row = TURNS - (@turn + 1)
         code_guess = @players[@codebreaker].make_guess(@turn)
         @board.turns[board_row][:code_guess] = code_guess
-        key_pegs = get_key_pegs(code_guess.clone, @board.code.clone).shuffle
+        key_pegs = calc_key_pegs(code_guess.clone, @board.code.clone).shuffle
         @board.turns[board_row][:key_pegs] = key_pegs
+        @board.print_board
         if key_pegs == [1, 1, 1, 1] || @turn + 1 == TURNS
           game_over
           break
@@ -50,25 +55,5 @@ class Game
     @codebreaker, @codemaker = @codemaker, @codebreaker if @players.map(&:switch_roles?).all?
     @board.make_new_board
     @turn = 0
-  end
-
-  def get_key_pegs(code_guess, code)
-    key_pegs = code_guess.each_with_index.map do |guess_peg, i|
-      guess_peg == code[i] ? 1 : 0
-    end
-    key_pegs.reverse_each.with_index do |item, i|
-      i = key_pegs.length - (i + 1)
-      if item == 1
-        code.delete_at(i)
-        code_guess.delete_at(i)
-      end
-    end
-    key_pegs.each_with_index do |item, i|
-      if (code.include? code_guess[i]) && (item.zero?)
-        code.delete_at(code.index(code_guess[i]))
-        key_pegs[i] = 2
-      end
-    end
-    key_pegs
   end
 end

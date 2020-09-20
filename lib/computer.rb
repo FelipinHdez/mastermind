@@ -1,7 +1,11 @@
+require_relative 'key_pegs'
 
 # Handles the computer logic
 class ComputerPlayer
   attr_accessor :name
+
+  include Key_pegs
+
   def initialize(board)
     @board = board
     @name = 'the computer'
@@ -28,17 +32,20 @@ class ComputerPlayer
 
   # This is where the AGI happens
   def make_guess(turn)
-    if turn == 1
-      guess = code_to_base6(rand_code)
-      @possible_guesses.delete_at(guess)
-      guess
+    if turn.zero?
+      restart_possible_guesses
+      guess = rand_code
+      @possible_guesses.delete_at(code_to_base6(guess))
+      result = guess
     else
       last_guess, guess_keys = @board.turns[TURNS - turn].values
-      last_guess = code_to_base6(last_guess)
-      guess_keys = guess_keys.sort
+      last_guess = last_guess.clone
+      guess_keys = guess_keys.clone.sort
       update_possible_guesses(last_guess, guess_keys)
-      @possible_guesses.sample.base6_to_code
+      result = base6_to_code(@possible_guesses.sample.to_s(6).to_i)
     end
+    sleep 0.1
+    result
   end
 
   def switch_roles?
@@ -53,15 +60,21 @@ class ComputerPlayer
 
   def code_to_base6(code)
     code = code.reduce(0){ |a, i| a * 10 + (i - 1) }
-    code.to_s.to_i(6)
   end
-  
+
   def base6_to_code(code)
-    '0000' << code.to_s
+    code = '0000' << code.to_s
     code.chars.last(4).map{ |i| i.to_i + 1 }
   end
 
   def update_possible_guesses(new_guess, new_keys)
-    @possible_guesses.filter { |code| get_key_pegs(new_guess, code).sort == new_keys }
+    @possible_guesses.filter! do |code| 
+      code = base6_to_code(code.to_s(6).to_i)
+      calc_key_pegs(new_guess.clone, code.clone).sort == new_keys
+    end
+  end
+  
+  def restart_possible_guesses
+    @possible_guesses = [*0..1295]
   end
 end
