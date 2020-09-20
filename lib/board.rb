@@ -3,8 +3,8 @@ class Board
   attr_accessor :turns, :code
 
   @@instructions = ['',"◦ = wrong guess
-#{'•'.red} = wrong position, correct color
-#{'•'.green} = correct position, correct color
+#{'•'.gray} = correct color, wrong position
+#{'•'.green} = correct color, correct position
 (Not in order)\n"]
 
   def initialize
@@ -83,7 +83,7 @@ class Board
   end
 
   def print_key_pegs(pegs, highlighted)
-    to_print = color_line('x', '◦', '•', pegs, %i[green red]).rstrip
+    to_print = color_line('x', '◦', '•', pegs, %i[green gray]).rstrip
     to_print = to_print.bg_green.bold.black if highlighted
     to_print
   end

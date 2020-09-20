@@ -17,7 +17,7 @@ class Game
         board_row = TURNS - (@turn + 1)
         code_guess = @players[@codebreaker].make_guess(@turn)
         @board.turns[board_row][:code_guess] = code_guess
-        key_pegs = get_key_pegs(code_guess.clone, @board.code.clone)
+        key_pegs = get_key_pegs(code_guess.clone, @board.code.clone).shuffle
         @board.turns[board_row][:key_pegs] = key_pegs
         if key_pegs == [1, 1, 1, 1] || @turn + 1 == TURNS
           game_over
@@ -69,6 +69,6 @@ class Game
         key_pegs[i] = 2
       end
     end
-    key_pegs.shuffle
+    key_pegs
   end
 end

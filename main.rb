@@ -5,7 +5,7 @@ require_relative 'lib/game'
 require_relative 'lib/human'
 require_relative 'lib/computer'
 
-TURNS = 3
+TURNS = 12
 
 test = Game.new
 test.play
