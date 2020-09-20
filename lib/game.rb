@@ -2,15 +2,14 @@ require_relative 'key_pegs'
 
 # Handles game logic
 class Game
-
   include Key_pegs
 
   def initialize
     @board = Board.new
     @players = [HumanPlayer.new(@board), ComputerPlayer.new(@board)]
     @turn = 0
-    @codemaker = 0
-    @codebreaker = 1
+    @codemaker = 1
+    @codebreaker = 0
   end
 
   def play

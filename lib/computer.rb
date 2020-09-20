@@ -59,7 +59,7 @@ class ComputerPlayer
   end
 
   def code_to_base6(code)
-    code = code.reduce(0){ |a, i| a * 10 + (i - 1) }
+    code.reduce(0){ |a, i| a * 10 + (i - 1) }
   end
 
   def base6_to_code(code)
@@ -73,7 +73,7 @@ class ComputerPlayer
       calc_key_pegs(new_guess.clone, code.clone).sort == new_keys
     end
   end
-  
+
   def restart_possible_guesses
     @possible_guesses = [*0..1295]
   end
